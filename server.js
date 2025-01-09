@@ -3,7 +3,9 @@ const cors = require('cors');
 const { db, initializeDatabase } = require('./db');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: 'https://inventory-system-frontend-2vto9tp1t-raguis-projects.vercel.app'
+  }));
 app.use(express.json());
 
 // Inicializar base de datos
