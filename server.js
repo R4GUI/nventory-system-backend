@@ -4,14 +4,17 @@ const { db, initializeDatabase } = require('./db');
 
 const app = express();
 // Configurar CORS para permitir múltiples orígenes
+// app.use(cors({
+//     origin: [
+//         'https://inventory-system-frontend-edefzwn07-raguis-projects.vercel.app',
+//         'https://inventory-system-frontend-2vto9tp1t-raguis-projects.vercel.app',
+//         'https://inventory-system-frontend.vercel.app'
+//     ],
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//     credentials: true
+// }));
 app.use(cors({
-    origin: [
-        'https://inventory-system-frontend-edefzwn07-raguis-projects.vercel.app',
-        'https://inventory-system-frontend-2vto9tp1t-raguis-projects.vercel.app',
-        'https://inventory-system-frontend.vercel.app'
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
+    origin: '*'
 }));
 
 app.use(express.json());
