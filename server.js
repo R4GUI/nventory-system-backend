@@ -1,18 +1,10 @@
 const express = require('express');
 const cors = require('cors');
+const XLSX = require('xlsx');
 const { db, initializeDatabase } = require('./db');
 
 const app = express();
-// Configurar CORS para permitir múltiples orígenes
-// app.use(cors({
-//     origin: [
-//         'https://inventory-system-frontend-edefzwn07-raguis-projects.vercel.app',
-//         'https://inventory-system-frontend-2vto9tp1t-raguis-projects.vercel.app',
-//         'https://inventory-system-frontend.vercel.app'
-//     ],
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//     credentials: true
-// }));
+
 app.use(cors({
     origin: '*'
 }));
@@ -22,7 +14,7 @@ app.use(express.json());
 // Inicializar base de datos
 initializeDatabase().catch(console.error);
 
-// Get all products
+// Obtener todos los productos
 app.get('/api/products', (req, res) => {
     db.all('SELECT * FROM products ORDER BY productos, peso', [], (err, rows) => {
         if (err) {
@@ -33,7 +25,7 @@ app.get('/api/products', (req, res) => {
     });
 });
 
-// Add new product
+// Agregar nuevo producto
 app.post('/api/products', (req, res) => {
     const { productos, um, peso, tipo, cantidad, precio_unit } = req.body;
     const valor = cantidad * precio_unit;
@@ -52,7 +44,7 @@ app.post('/api/products', (req, res) => {
     );
 });
 
-// Register movement
+// Registrar movimiento
 app.post('/api/movements', (req, res) => {
     const { producto, tipo, cantidad, peso, um } = req.body;
 
@@ -70,7 +62,7 @@ app.post('/api/movements', (req, res) => {
             const product = await db.get('SELECT * FROM products WHERE productos = ?', [producto]);
 
             if (!product) {
-                throw new Error('Product not found');
+                throw new Error('Producto no encontrado');
             }
 
             // Actualizar producto
@@ -89,7 +81,7 @@ app.post('/api/movements', (req, res) => {
     });
 });
 
-// Get movements history
+// Obtener historial de movimientos
 app.get('/api/movements', (req, res) => {
     db.all('SELECT * FROM movements ORDER BY fecha DESC', [], (err, rows) => {
         if (err) {
@@ -100,7 +92,7 @@ app.get('/api/movements', (req, res) => {
     });
 });
 
-// Get movements by date range
+// Obtener movimientos por rango de fechas
 app.get('/api/movements/range', (req, res) => {
     const { start, end } = req.query;
     const startDate = new Date(start);
@@ -118,6 +110,97 @@ app.get('/api/movements/range', (req, res) => {
             res.json(rows);
         }
     );
+});
+
+// Exportar productos a Excel
+app.get('/api/export', (req, res) => {
+    db.all('SELECT * FROM products ORDER BY productos, peso', [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+
+        try {
+            // Crear nuevo libro de Excel
+            const workbook = XLSX.utils.book_new();
+            
+            // Convertir los datos al formato de hoja de cálculo
+            const worksheet = XLSX.utils.json_to_sheet(rows.map(row => ({
+                'PRODUCTOS': row.productos,
+                'UM': row.um,
+                'PESO': row.peso,
+                'TIPO': row.tipo,
+                'CANTIDAD': row.cantidad,
+                'Prec.Unit.': row.precio_unit,
+                'VALOR': row.valor,
+                'PESO TOTAL': row.peso_total
+            })));
+
+            // Agregar la hoja al libro
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+
+            // Generar buffer
+            const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+            // Configurar headers para la descarga del archivo
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=inventario.xlsx');
+            
+            // Enviar el archivo
+            res.send(excelBuffer);
+        } catch (error) {
+            console.error('Error al crear archivo Excel:', error);
+            res.status(500).json({ error: 'Error al crear archivo Excel' });
+        }
+    });
+});
+
+// Exportar movimientos a Excel
+app.get('/api/export/movements', (req, res) => {
+    const { start, end } = req.query;
+    let query = 'SELECT * FROM movements';
+    let params = [];
+
+    if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        endDate.setHours(23, 59, 59);
+        query += ' WHERE fecha BETWEEN ? AND ?';
+        params = [startDate.toISOString(), endDate.toISOString()];
+    }
+
+    query += ' ORDER BY fecha DESC';
+
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+
+        try {
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(rows.map(row => ({
+                'Fecha': row.fecha,
+                'Producto': row.producto,
+                'Tipo': row.tipo,
+                'Cantidad': row.cantidad,
+                'Peso': row.peso,
+                'UM': row.um
+            })));
+
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Movimientos');
+
+            const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=movimientos.xlsx');
+            
+            res.send(excelBuffer);
+        } catch (error) {
+            console.error('Error al crear archivo Excel:', error);
+            res.status(500).json({ error: 'Error al crear archivo Excel' });
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;

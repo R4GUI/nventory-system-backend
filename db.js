@@ -14,7 +14,6 @@ async function initializeDatabase() {
     db.serialize(() => {
         // Crear tablas
         // Tabla de productos
-        // Tabla de productos (para el inventario inicial del Excel)
         db.run(`CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             productos TEXT NOT NULL,
@@ -27,7 +26,7 @@ async function initializeDatabase() {
             peso_total REAL
         )`);
 
-        // Tabla de movimientos (para registrar cambios desde 2025)
+        // Tabla de movimientos
         db.run(`CREATE TABLE IF NOT EXISTS movements (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             producto TEXT NOT NULL,
