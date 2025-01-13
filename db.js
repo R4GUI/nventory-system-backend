@@ -2,6 +2,8 @@ const sqlite3 = require('sqlite3').verbose();
 const XLSX = require('xlsx');
 const path = require('path');
 
+//nuevos datos
+
 const db = new sqlite3.Database('./inventory.db', (err) => {
     if (err) {
         console.error('Error conectando a la base de datos', err);
